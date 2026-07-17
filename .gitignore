@@ -1,0 +1,15 @@
+# macOS Finder metadata
+.DS_Store
+
+# Local build output and distributable app bundle
+build/
+dist/
+
+# Runtime logs and temporary files
+logs/
+*.log
+*.tmp
+
+# Python bytecode
+__pycache__/
+*.py[cod]

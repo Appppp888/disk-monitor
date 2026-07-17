@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>硬盘读写监控</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>硬盘读写监控</h1>
+          <p id="subline">正在连接本地采样器...</p>
+        </div>
+        <div class="actions">
+          <button id="hiddenSettingsBtn" class="icon-button" type="button" title="隐藏项设置" aria-label="隐藏项设置">
+            <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
+              <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 1 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1A2 2 0 1 1 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6h.1a1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 1 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.6 1h.1a2 2 0 1 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z"></path>
+            </svg>
+          </button>
+          <button id="alertButton" class="icon-button notification-button" type="button" title="消息中心" aria-label="消息中心">
+            <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+              <path d="M13.7 21a2 2 0 0 1-3.4 0"></path>
+            </svg>
+            <span id="alertBadge" class="notification-badge" hidden>0</span>
+          </button>
+          <button id="snapshotBtn" class="primary" type="button">保存当前日志</button>
+          <button id="refreshBtn" type="button">刷新</button>
+        </div>
+      </header>
+
+      <section class="metrics" aria-label="总览">
+        <div class="metric">
+          <span>启动后写入</span>
+          <strong id="totalWrite">--</strong>
+        </div>
+        <div class="metric">
+          <span>启动后读取</span>
+          <strong id="totalRead">--</strong>
+        </div>
+        <div class="metric">
+          <span>当前写速</span>
+          <strong id="writeRate">--</strong>
+        </div>
+        <div class="metric">
+          <span>下次日志</span>
+          <strong id="nextLog">--</strong>
+        </div>
+      </section>
+
+      <section class="controls" aria-label="设置">
+        <label>
+          <span>筛选进程</span>
+          <input id="filterInput" type="search" placeholder="输入应用、进程、路径或 PID" />
+        </label>
+        <label>
+          <span>采样间隔</span>
+          <select id="sampleInterval">
+            <option value="1">1 秒</option>
+            <option value="3">3 秒</option>
+            <option value="5" selected>5 秒</option>
+            <option value="10">10 秒</option>
+            <option value="30">30 秒</option>
+          </select>
+        </label>
+        <label>
+          <span>日志间隔</span>
+          <select id="logInterval">
+            <option value="5">5 分钟</option>
+            <option value="10">10 分钟</option>
+            <option value="30" selected>30 分钟</option>
+            <option value="60">60 分钟</option>
+          </select>
+        </label>
+        <label class="toggle">
+          <input id="logEnabled" type="checkbox" checked />
+          <span>自动写日志</span>
+        </label>
+        <label class="toggle">
+          <input id="monitorDuringSleep" type="checkbox" />
+          <span>休眠期间继续监控</span>
+        </label>
+        <div class="folder-control">
+          <span>日志文件夹</span>
+          <div class="folder-row">
+            <input id="logDirectory" type="text" readonly value="--" />
+            <button id="chooseFolderBtn" type="button">选择文件夹</button>
+          </div>
+        </div>
+        <div class="advanced-control">
+          <span>阈值提醒</span>
+          <div class="inline-settings">
+            <label class="toggle">
+              <input id="alertEnabled" type="checkbox" />
+              <span>开启</span>
+            </label>
+            <label>
+              <span>统计窗口</span>
+              <select id="alertWindow">
+                <option value="5">5 分钟</option>
+                <option value="10" selected>10 分钟</option>
+                <option value="30">30 分钟</option>
+                <option value="60">60 分钟</option>
+              </select>
+            </label>
+            <label>
+              <span>读写合计阈值（GB）</span>
+              <input id="alertThreshold" type="number" min="0" step="0.1" value="10" />
+            </label>
+          </div>
+        </div>
+        <div class="advanced-control">
+          <span>自动报告</span>
+          <div class="inline-settings report-settings">
+            <label class="toggle">
+              <input id="dailyReportEnabled" type="checkbox" />
+              <span>日报</span>
+            </label>
+            <button id="dailyReportInfo" class="info-button" type="button" aria-label="日报统计口径">
+              i
+              <span id="dailyReportInfoText" class="info-tooltip" role="tooltip"></span>
+            </button>
+            <label>
+              <span>日报时间</span>
+              <input id="dailyReportTime" type="time" value="23:55" />
+            </label>
+            <label class="toggle">
+              <input id="weeklyReportEnabled" type="checkbox" />
+              <span>周报</span>
+            </label>
+            <button id="weeklyReportInfo" class="info-button" type="button" aria-label="周报统计口径">
+              i
+              <span id="weeklyReportInfoText" class="info-tooltip" role="tooltip"></span>
+            </button>
+            <label>
+              <span>周报日期</span>
+              <select id="weeklyReportDay">
+                <option value="0">周一</option>
+                <option value="1">周二</option>
+                <option value="2">周三</option>
+                <option value="3">周四</option>
+                <option value="4">周五</option>
+                <option value="5">周六</option>
+                <option value="6" selected>周日</option>
+              </select>
+            </label>
+            <label>
+              <span>周报时间</span>
+              <input id="weeklyReportTime" type="time" value="23:55" />
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="table-shell" aria-label="进程读写排名">
+        <div class="table-title">
+          <div>
+            <h2>进程排名</h2>
+            <p id="tableMeta">--</p>
+          </div>
+          <span id="rowCount">--</span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>
+                  <span class="sort-head">
+                    <span>应用/进程</span>
+                    <span class="sort-buttons">
+                      <button type="button" data-sort="app" data-sort-dir="1" title="按名称升序" aria-label="按名称升序">▲</button>
+                      <button type="button" data-sort="app" data-sort-dir="-1" title="按名称降序" aria-label="按名称降序">▼</button>
+                    </span>
+                  </span>
+                </th>
+                <th>
+                  <span class="sort-head">
+                    <span>启动后写入</span>
+                    <span class="sort-buttons">
+                      <button type="button" data-sort="session_write_bytes" data-sort-dir="1" title="按启动后写入升序" aria-label="按启动后写入升序">▲</button>
+                      <button type="button" data-sort="session_write_bytes" data-sort-dir="-1" title="按启动后写入降序" aria-label="按启动后写入降序">▼</button>
+                    </span>
+                  </span>
+                </th>
+                <th>
+                  <span class="sort-head">
+                    <span>启动后读取</span>
+                    <span class="sort-buttons">
+                      <button type="button" data-sort="session_read_bytes" data-sort-dir="1" title="按启动后读取升序" aria-label="按启动后读取升序">▲</button>
+                      <button type="button" data-sort="session_read_bytes" data-sort-dir="-1" title="按启动后读取降序" aria-label="按启动后读取降序">▼</button>
+                    </span>
+                  </span>
+                </th>
+                <th>
+                  <span class="sort-head">
+                    <span>写速</span>
+                    <span class="sort-buttons">
+                      <button type="button" data-sort="write_rate_bps" data-sort-dir="1" title="按写速升序" aria-label="按写速升序">▲</button>
+                      <button type="button" data-sort="write_rate_bps" data-sort-dir="-1" title="按写速降序" aria-label="按写速降序">▼</button>
+                    </span>
+                  </span>
+                </th>
+                <th>
+                  <span class="sort-head">
+                    <span>读速</span>
+                    <span class="sort-buttons">
+                      <button type="button" data-sort="read_rate_bps" data-sort-dir="1" title="按读速升序" aria-label="按读速升序">▲</button>
+                      <button type="button" data-sort="read_rate_bps" data-sort-dir="-1" title="按读速降序" aria-label="按读速降序">▼</button>
+                    </span>
+                  </span>
+                </th>
+                <th>
+                  <span class="sort-head">
+                    <span>进程累计写入</span>
+                    <span class="sort-buttons">
+                      <button type="button" data-sort="lifetime_write_bytes" data-sort-dir="1" title="按进程累计写入升序" aria-label="按进程累计写入升序">▲</button>
+                      <button type="button" data-sort="lifetime_write_bytes" data-sort-dir="-1" title="按进程累计写入降序" aria-label="按进程累计写入降序">▼</button>
+                    </span>
+                  </span>
+                </th>
+                <th>PID</th>
+                <th>路径</th>
+              </tr>
+            </thead>
+            <tbody id="processBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer class="app-footer">
+        <button id="aboutProjectBtn" type="button">GitHub Appppp888</button>
+      </footer>
+
+    </main>
+
+    <div id="alertOverlay" class="alert-overlay" hidden>
+      <section class="alert-panel" aria-label="消息中心">
+        <header class="alert-header">
+          <div>
+            <h2>消息中心</h2>
+            <p id="alertMeta">--</p>
+          </div>
+          <button id="closeAlertBtn" type="button">关闭</button>
+        </header>
+        <div id="alertList" class="alert-list"></div>
+      </section>
+    </div>
+
+    <div id="hiddenOverlay" class="hidden-overlay" hidden>
+      <section class="hidden-panel" aria-label="隐藏项设置">
+        <header class="hidden-header">
+          <div>
+            <h2>隐藏项设置</h2>
+            <p id="hiddenMeta">--</p>
+          </div>
+          <button id="closeHiddenBtn" type="button">关闭</button>
+        </header>
+        <div id="hiddenList" class="hidden-list"></div>
+      </section>
+    </div>
+
+    <div id="detailOverlay" class="detail-overlay" hidden>
+      <section class="detail-panel" aria-label="进程详情">
+        <header class="detail-header">
+          <div>
+            <h2 id="detailTitle">进程详情</h2>
+            <p id="detailSubtitle">--</p>
+          </div>
+          <button id="closeDetailBtn" type="button">关闭</button>
+        </header>
+        <div class="detail-grid">
+          <label>
+            <span>完整应用/进程名</span>
+            <input id="detailAppName" type="text" readonly />
+          </label>
+          <label>
+            <span>PID</span>
+            <input id="detailPids" type="text" readonly />
+          </label>
+          <label class="wide">
+            <span>完整可执行文件路径</span>
+            <textarea id="detailPath" readonly rows="3"></textarea>
+          </label>
+          <label>
+            <span>启动后写入</span>
+            <input id="detailSessionWrite" type="text" readonly />
+          </label>
+          <label>
+            <span>启动后读取</span>
+            <input id="detailSessionRead" type="text" readonly />
+          </label>
+          <label>
+            <span>当前写速</span>
+            <input id="detailWriteRate" type="text" readonly />
+          </label>
+          <label>
+            <span>当前读速</span>
+            <input id="detailReadRate" type="text" readonly />
+          </label>
+        </div>
+        <div class="detail-actions">
+          <button id="hideProcessBtn" type="button">隐藏此项</button>
+          <button id="copyPathBtn" type="button">复制路径</button>
+          <button id="copyAllBtn" class="primary" type="button">复制全部信息</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="aboutOverlay" class="about-overlay" hidden>
+      <section class="about-panel" aria-label="开发背景">
+        <header class="about-header">
+          <div>
+            <h2>开发背景</h2>
+            <p>Disk Monitor</p>
+          </div>
+          <button id="closeAboutBtn" type="button">关闭</button>
+        </header>
+        <div class="about-content">
+          <p>
+            这是一位摄影师使用 Codex vibe coding 开发的第二款软件，也是第一次把这样一款工具分享给更多用户使用。
+          </p>
+          <p>
+            在开始这个项目之前，作者从未想过自己有一天真的能够像专业程序员一样做出一款可以运行的 macOS App，并把它发布到网络上，帮助同样需要排查硬盘异常读写问题的人。
+          </p>
+          <p>
+            这个软件也许仍然存在 Bug，也还有许多值得继续优化的地方。欢迎用户在使用过程中提出建议、反馈问题，帮助它变得更稳定、更实用。
+          </p>
+          <div class="about-meta">
+            <span>作者: Appppp888</span>
+            <span>程序员: GPT5.5</span>
+            <span>免费开源项目</span>
+            <a href="https://github.com/Appppp888" target="_blank" rel="noopener noreferrer">https://github.com/Appppp888</a>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

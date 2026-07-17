@@ -1,6 +1,15 @@
+
 # 硬盘读写监控
 
 当前版本: v1.5.9 / Build 21
+
+## 直接下载 Mac App
+
+[下载 Disk Monitor v1.5.9（macOS Apple Silicon）](https://github.com/Appppp888/disk-monitor/raw/refs/heads/main/Disk-Monitor-v1.5.9-macOS-arm64.zip)
+
+下载 ZIP 后双击解压，再双击“硬盘读写监控.app”即可使用。
+
+系统要求：macOS 12 或更高版本，Apple Silicon Mac（M1/M2/M3/M4）。
 
 ## 项目信息
 
